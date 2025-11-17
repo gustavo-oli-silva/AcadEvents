@@ -4,7 +4,7 @@ namespace AcadEvents.Repositories;
 
 public class BaseRepository<T> : IRepository<T> where T : class
 {
-    private readonly DbContext _db;
+    protected readonly DbContext _db;
 
     public BaseRepository(DbContext db) { _db = db; }
 
@@ -13,8 +13,38 @@ public class BaseRepository<T> : IRepository<T> where T : class
 
     public async Task<T?> FindByIdAsync(long id, CancellationToken cancellationToken = default)
     {
-        // Agora o .Set<T>() sabe que T é uma classe e vai compilar
         var found = await _db.Set<T>().FindAsync(new object[] { id }, cancellationToken);
         return found;
+    }
+
+    public async Task<T> CreateAsync(T entity, CancellationToken cancellationToken = default)
+    {
+        await _db.Set<T>().AddAsync(entity, cancellationToken);
+        await _db.SaveChangesAsync(cancellationToken);
+        return entity;
+    }
+
+    public async Task<T> UpdateAsync(T entity, CancellationToken cancellationToken = default)
+    {
+        _db.Set<T>().Update(entity);
+        await _db.SaveChangesAsync(cancellationToken);
+        return entity;
+    }
+
+    public async Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var entity = await FindByIdAsync(id, cancellationToken);
+        if (entity == null)
+            return false;
+
+        _db.Set<T>().Remove(entity);
+        await _db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> ExistsAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var entity = await FindByIdAsync(id, cancellationToken);
+        return entity != null;
     }
 }
