@@ -11,13 +11,37 @@ builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
 // Configuração do DbContext
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AcadEventsDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        connectionString,
+        sqlServerOptions => sqlServerOptions.EnableRetryOnFailure(
+            maxRetryCount: 10,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null)));
 
 // Injeção de dependência dos repositórios
 builder.Services.Inject();
 
 var app = builder.Build();
+
+// Aplicar migrations automaticamente
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<AcadEventsDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        logger.LogInformation("Aplicando migrations do banco de dados...");
+        dbContext.Database.Migrate();
+        logger.LogInformation("Migrations aplicadas com sucesso!");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Erro ao aplicar migrations. A aplicação continuará, mas pode haver problemas de conexão.");
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {

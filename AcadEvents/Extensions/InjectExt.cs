@@ -1,4 +1,5 @@
 ﻿using AcadEvents.Repositories;
+using AcadEvents.Services;
 
 namespace AcadEvents.Extensions;
 
@@ -25,5 +26,8 @@ public static class InjectExt
         service.AddScoped<HistoricoEventoRepository>();
         service.AddScoped<NotificacaoRepository>();
         service.AddScoped<PerfilORCIDRepository>();
+
+        // Services
+        service.AddScoped<EventoService>();
     }
 }
