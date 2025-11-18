@@ -1,6 +1,7 @@
 using AcadEvents.Repositories;
 using AcadEvents.Data;
 using AcadEvents.Extensions;
+using AcadEvents.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -9,6 +10,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 
 builder.Services.AddControllers();
+
+// Configuração do HttpClient para API Externa (Crossref)
+builder.Services.AddHttpClient<ICrossrefService, CrossrefService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.crossref.org/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+    client.DefaultRequestHeaders.Add("User-Agent", "AcadEvents/1.0 (mailto:contato@acadevents.com)");
+});
 
 // Configuração do DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
