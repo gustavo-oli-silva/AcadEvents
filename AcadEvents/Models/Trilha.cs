@@ -17,6 +17,4 @@ public class Trilha : DefaultModel
     // Relacionamento: 1 Trilha -> * Sessao
     public ICollection<Sessao> Sessoes { get; set; } = new List<Sessao>();
 
-    // Relacionamento: 1 Trilha -> * Submissao
-    public ICollection<Submissao> Submissoes { get; set; } = new List<Submissao>();
 }

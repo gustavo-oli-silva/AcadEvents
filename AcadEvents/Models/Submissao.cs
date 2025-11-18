@@ -17,10 +17,6 @@ public class Submissao : DefaultModel
     public long AutorId { get; set; }
     public Autor Autor { get; set; }
 
-    // Relacionamento Inverso: 1 Submissao -> 1 Trilha
-    public long TrilhaId { get; set; }
-    public Trilha Trilha { get; set; }
-
     // Relacionamento Inverso: 1 Submissao -> 1 TrilhaTematica
     public long TrilhaTematicaId { get; set; }
     public TrilhaTematica TrilhaTematica { get; set; }

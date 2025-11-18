@@ -56,6 +56,13 @@ public class AcadEventsDbContext : DbContext
                 v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>()
             );
 
+        modelBuilder.Entity<TrilhaTematica>()
+            .Property(tt => tt.PalavrasChave)
+            .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<string>()
+            );
+
         modelBuilder.Entity<Avaliador>()
             .Property(a => a.Especialidades)
             .HasConversion(
@@ -97,13 +104,6 @@ public class AcadEventsDbContext : DbContext
             .HasOne(s => s.Autor)
             .WithMany(a => a.Submissoes)
             .HasForeignKey(s => s.AutorId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        // Submissao -> Trilha (NO ACTION para evitar múltiplos caminhos de cascade)
-        modelBuilder.Entity<Submissao>()
-            .HasOne(s => s.Trilha)
-            .WithMany(t => t.Submissoes)
-            .HasForeignKey(s => s.TrilhaId)
             .OnDelete(DeleteBehavior.NoAction);
 
         // Submissao -> TrilhaTematica (NO ACTION)
@@ -263,7 +263,7 @@ public class AcadEventsDbContext : DbContext
             .HasIndex(s => s.AutorId);
 
         modelBuilder.Entity<Submissao>()
-            .HasIndex(s => s.TrilhaId);
+            .HasIndex(s => s.TrilhaTematicaId);
     }
 }
 
