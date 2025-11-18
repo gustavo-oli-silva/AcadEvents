@@ -29,5 +29,8 @@ public static class InjectExt
 
         // Services
         service.AddScoped<EventoService>();
+        service.AddScoped<AvaliadorService>();
+        service.AddScoped<OrganizadorService>();
+        service.AddScoped<AutorService>();
     }
 }
