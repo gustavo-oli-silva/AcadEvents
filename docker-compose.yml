@@ -20,6 +20,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: acadevents-backend
+    env_file:
+      - .env
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080

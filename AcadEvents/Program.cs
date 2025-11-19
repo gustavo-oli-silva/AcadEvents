@@ -4,8 +4,10 @@ using AcadEvents.Extensions;
 using AcadEvents.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
-
+using DotNetEnv;
 var builder = WebApplication.CreateBuilder(args);
+
+Env.Load();
 
 builder.Services.AddOpenApi();
 
