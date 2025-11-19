@@ -10,4 +10,9 @@ public class PerfilORCID : DefaultModel
     // Relacionamento Inverso: 1 PerfilORCID -> 1 Usuario
     public long UsuarioId { get; set; }
     public Usuario Usuario { get; set; }
+
+    public string AccessToken { get; set; } = string.Empty;
+    public string? RefreshToken { get; set; }
+    public DateTime TokenExpiresAt { get; set; }
+    public DateTime? LastSyncAt { get; set; }
 }

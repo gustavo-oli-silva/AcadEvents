@@ -41,6 +41,7 @@ public static class InjectExt
         service.AddScoped<AvaliacaoService>();
         service.AddScoped<ConviteAvaliacaoService>();
         service.AddScoped<SubmissaoService>();
-        // CrossrefService é registrado via AddHttpClient no Program.cs
+        service.AddScoped<IOrcidService, OrcidService>();
+        // CrossrefService e OrcidClient são registrados via AddHttpClient no Program.cs
     }
 }

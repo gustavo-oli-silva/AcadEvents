@@ -22,6 +22,13 @@ builder.Services.AddHttpClient<ICrossrefService, CrossrefService>(client =>
     client.DefaultRequestHeaders.Add("User-Agent", "AcadEvents/1.0 (mailto:contato@acadevents.com)");
 });
 
+// Configuração do HttpClient para API ORCID
+builder.Services.AddHttpClient<IOrcidClient, OrcidClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+});
+
 // Configuração do DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AcadEventsDbContext>(options =>
