@@ -27,23 +27,33 @@ public class TrilhaService
         return await _trilhaRepository.FindByIdAsync(id, cancellationToken);
     }
 
-    public async Task<Trilha> CreateAsync(long eventoId, TrilhaRequestDTO request, CancellationToken cancellationToken = default)
+    public async Task<Trilha> CreateAsync(TrilhaRequestDTO request, CancellationToken cancellationToken = default)
     {
-        // Verificar se o evento existe
-        var evento = await _eventoRepository.FindByIdAsync(eventoId, cancellationToken);
-        if (evento == null)
-            throw new ArgumentException($"Evento com Id {eventoId} não encontrado.");
-
         var trilha = new Trilha
         {
             Nome = request.Nome,
             Descricao = request.Descricao,
             Coordenador = request.Coordenador,
             LimiteSubmissoes = request.LimiteSubmissoes,
-            EventoId = eventoId
+            EventoId = null
         };
 
         return await _trilhaRepository.CreateAsync(trilha, cancellationToken);
+    }
+
+    public async Task<Trilha> AssociateToEventoAsync(long trilhaId, long eventoId, CancellationToken cancellationToken = default)
+    {
+        var trilha = await _trilhaRepository.FindByIdAsync(trilhaId, cancellationToken);
+        if (trilha == null)
+            throw new ArgumentException($"Trilha com Id {trilhaId} não encontrada.");
+
+        // Verificar se o evento existe
+        var evento = await _eventoRepository.FindByIdAsync(eventoId, cancellationToken);
+        if (evento == null)
+            throw new ArgumentException($"Evento com Id {eventoId} não encontrado.");
+
+        trilha.EventoId = eventoId;
+        return await _trilhaRepository.UpdateAsync(trilha, cancellationToken);
     }
 
     public async Task<Trilha?> UpdateAsync(long id, TrilhaRequestDTO request, CancellationToken cancellationToken = default)

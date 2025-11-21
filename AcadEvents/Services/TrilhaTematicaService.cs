@@ -27,22 +27,42 @@ public class TrilhaTematicaService
         return await _trilhaTematicaRepository.FindByIdAsync(id, cancellationToken);
     }
 
-    public async Task<TrilhaTematica> CreateAsync(long trilhaId, TrilhaTematicaRequestDTO request, CancellationToken cancellationToken = default)
+    public async Task<List<TrilhaTematica>> GetByTrilhaIdAsync(long trilhaId, CancellationToken cancellationToken = default)
     {
         // Verificar se a trilha existe
         var trilha = await _trilhaRepository.FindByIdAsync(trilhaId, cancellationToken);
         if (trilha == null)
             throw new ArgumentException($"Trilha com Id {trilhaId} não encontrada.");
 
+        return await _trilhaTematicaRepository.FindByTrilhaIdAsync(trilhaId, cancellationToken);
+    }
+
+    public async Task<TrilhaTematica> CreateAsync(TrilhaTematicaRequestDTO request, CancellationToken cancellationToken = default)
+    {
         var trilhaTematica = new TrilhaTematica
         {
             Nome = request.Nome,
             Descricao = request.Descricao,
             PalavrasChave = request.PalavrasChave ?? new List<string>(),
-            TrilhaId = trilhaId
+            TrilhaId = null
         };
 
         return await _trilhaTematicaRepository.CreateAsync(trilhaTematica, cancellationToken);
+    }
+
+    public async Task<TrilhaTematica> AssociateToTrilhaAsync(long trilhaTematicaId, long trilhaId, CancellationToken cancellationToken = default)
+    {
+        var trilhaTematica = await _trilhaTematicaRepository.FindByIdAsync(trilhaTematicaId, cancellationToken);
+        if (trilhaTematica == null)
+            throw new ArgumentException($"Trilha Temática com Id {trilhaTematicaId} não encontrada.");
+
+        // Verificar se a trilha existe
+        var trilha = await _trilhaRepository.FindByIdAsync(trilhaId, cancellationToken);
+        if (trilha == null)
+            throw new ArgumentException($"Trilha com Id {trilhaId} não encontrada.");
+
+        trilhaTematica.TrilhaId = trilhaId;
+        return await _trilhaTematicaRepository.UpdateAsync(trilhaTematica, cancellationToken);
     }
 
     public async Task<TrilhaTematica?> UpdateAsync(long id, TrilhaTematicaRequestDTO request, CancellationToken cancellationToken = default)

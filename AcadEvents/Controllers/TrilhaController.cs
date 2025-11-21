@@ -1,84 +1,125 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AcadEvents.Dtos;
 using AcadEvents.Services;
 
-namespace AcadEvents.Controllers
+namespace AcadEvents.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class TrilhaController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class TrilhaController : ControllerBase
+    private readonly TrilhaService _trilhaService;
+    private readonly TrilhaTematicaService _trilhaTematicaService;
+
+    public TrilhaController(
+        TrilhaService trilhaService,
+        TrilhaTematicaService trilhaTematicaService)
     {
-        private readonly TrilhaService _trilhaService;
+        _trilhaService = trilhaService;
+        _trilhaTematicaService = trilhaTematicaService;
+    }
 
-        public TrilhaController(TrilhaService trilhaService)
+    [HttpGet]
+    public async Task<ActionResult<List<TrilhaResponseDTO>>> GetAll(CancellationToken cancellationToken = default)
+    {
+        var trilhas = await _trilhaService.GetAllAsync(cancellationToken);
+        var trilhasDTO = trilhas.Select(t => TrilhaResponseDTO.ValueOf(t)).ToList();
+        return Ok(trilhasDTO);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<TrilhaResponseDTO>> GetById(long id, CancellationToken cancellationToken = default)
+    {
+        var trilha = await _trilhaService.GetByIdAsync(id, cancellationToken);
+        if (trilha == null)
+            return NotFound($"Trilha com Id {id} não encontrada.");
+
+        return Ok(TrilhaResponseDTO.ValueOf(trilha));
+    }
+
+    [HttpGet("{trilhaId}/tematicas")]
+    public async Task<ActionResult<List<TrilhaTematicaResponseDTO>>> GetTematicasByTrilhaId(
+        long trilhaId,
+        CancellationToken cancellationToken = default)
+    {
+        try
         {
-            _trilhaService = trilhaService;
+            var trilhasTematicas = await _trilhaTematicaService.GetByTrilhaIdAsync(trilhaId, cancellationToken);
+            var trilhasTematicasDTO = trilhasTematicas.Select(tt => TrilhaTematicaResponseDTO.ValueOf(tt)).ToList();
+            return Ok(trilhasTematicasDTO);
         }
-
-        [HttpGet]
-        public async Task<ActionResult<List<TrilhaResponseDTO>>> GetAll(CancellationToken cancellationToken = default)
+        catch (ArgumentException ex)
         {
-            var trilhas = await _trilhaService.GetAllAsync(cancellationToken);
-            var trilhasDTO = trilhas.Select(t => TrilhaResponseDTO.ValueOf(t)).ToList();
-            return Ok(trilhasDTO);
+            return BadRequest(ex.Message);
         }
+    }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<TrilhaResponseDTO>> GetById(long id, CancellationToken cancellationToken = default)
+    [HttpPost]
+    [Authorize(Roles = "Organizador")]
+    public async Task<ActionResult<TrilhaResponseDTO>> Create(
+        [FromBody] TrilhaRequestDTO request,
+        CancellationToken cancellationToken = default)
+    {
+        try
         {
-            var trilha = await _trilhaService.GetByIdAsync(id, cancellationToken);
-            if (trilha == null)
-                return NotFound($"Trilha com Id {id} não encontrada.");
+            var trilha = await _trilhaService.CreateAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetById), new { id = trilha.Id }, TrilhaResponseDTO.ValueOf(trilha));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 
+    [HttpPost("{trilhaId}/evento/{eventoId}")]
+    [Authorize(Roles = "Organizador")]
+    public async Task<ActionResult<TrilhaResponseDTO>> AssociateToEvento(
+        long trilhaId,
+        long eventoId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var trilha = await _trilhaService.AssociateToEventoAsync(trilhaId, eventoId, cancellationToken);
             return Ok(TrilhaResponseDTO.ValueOf(trilha));
         }
-
-        [HttpPost("evento/{eventoId}")]
-        public async Task<ActionResult<TrilhaResponseDTO>> Create(
-            long eventoId,
-            [FromBody] TrilhaRequestDTO request,
-            CancellationToken cancellationToken = default)
+        catch (ArgumentException ex)
         {
-            try
-            {
-                var trilha = await _trilhaService.CreateAsync(eventoId, request, cancellationToken);
-                return CreatedAtAction(nameof(GetById), new { id = trilha.Id }, TrilhaResponseDTO.ValueOf(trilha));
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            return BadRequest(ex.Message);
         }
+    }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(
-            long id,
-            [FromBody] TrilhaRequestDTO request,
-            CancellationToken cancellationToken = default)
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Organizador")]
+    public async Task<IActionResult> Update(
+        long id,
+        [FromBody] TrilhaRequestDTO request,
+        CancellationToken cancellationToken = default)
+    {
+        try
         {
-            try
-            {
-                var trilha = await _trilhaService.UpdateAsync(id, request, cancellationToken);
-                if (trilha == null)
-                    return NotFound($"Trilha com Id {id} não encontrada.");
-
-                return NoContent();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken = default)
-        {
-            var deletado = await _trilhaService.DeleteAsync(id, cancellationToken);
-            if (!deletado)
+            var trilha = await _trilhaService.UpdateAsync(id, request, cancellationToken);
+            if (trilha == null)
                 return NotFound($"Trilha com Id {id} não encontrada.");
 
             return NoContent();
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Organizador")]
+    public async Task<IActionResult> Delete(long id, CancellationToken cancellationToken = default)
+    {
+        var deletado = await _trilhaService.DeleteAsync(id, cancellationToken);
+        if (!deletado)
+            return NotFound($"Trilha com Id {id} não encontrada.");
+
+        return NoContent();
     }
 }
 

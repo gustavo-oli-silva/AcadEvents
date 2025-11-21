@@ -7,9 +7,9 @@ public class Trilha : DefaultModel
     public string Coordenador { get; set; }
     public int LimiteSubmissoes { get; set; }
 
-    // Relacionamento Inverso: 1 Trilha -> 1 Evento
-    public long EventoId { get; set; }
-    public Evento Evento { get; set; }
+    // Relacionamento Inverso: 1 Trilha -> 1 Evento (opcional)
+    public long? EventoId { get; set; }
+    public Evento? Evento { get; set; }
 
     // Relacionamento: 1 Trilha -> * TrilhaTematica
     public ICollection<TrilhaTematica> Tematicas { get; set; } = new List<TrilhaTematica>();

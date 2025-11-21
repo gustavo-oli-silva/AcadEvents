@@ -8,7 +8,7 @@ public record TrilhaTematicaResponseDTO
     public string Nome { get; init; }
     public string Descricao { get; init; }
     public List<string> PalavrasChave { get; init; } = new();
-    public long TrilhaId { get; init; }
+    public long? TrilhaId { get; init; }
 
     public static TrilhaTematicaResponseDTO ValueOf(TrilhaTematica trilhaTematica)
     {
@@ -18,7 +18,7 @@ public record TrilhaTematicaResponseDTO
             Nome = trilhaTematica.Nome,
             Descricao = trilhaTematica.Descricao,
             PalavrasChave = trilhaTematica.PalavrasChave ?? new List<string>(),
-            TrilhaId = trilhaTematica.TrilhaId
+            TrilhaId = trilhaTematica.TrilhaId ?? null
         };
     }
 }

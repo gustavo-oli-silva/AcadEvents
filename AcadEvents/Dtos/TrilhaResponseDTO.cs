@@ -9,7 +9,7 @@ public record TrilhaResponseDTO
     public string Descricao { get; init; }
     public string Coordenador { get; init; }
     public int LimiteSubmissoes { get; init; }
-    public long EventoId { get; init; }
+    public long? EventoId { get; init; }
 
     public static TrilhaResponseDTO ValueOf(Trilha trilha)
     {
@@ -20,7 +20,7 @@ public record TrilhaResponseDTO
             Descricao = trilha.Descricao,
             Coordenador = trilha.Coordenador,
             LimiteSubmissoes = trilha.LimiteSubmissoes,
-            EventoId = trilha.EventoId
+            EventoId = trilha.EventoId ?? null
         };
     }
 }

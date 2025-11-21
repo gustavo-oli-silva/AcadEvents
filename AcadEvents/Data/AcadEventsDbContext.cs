@@ -127,18 +127,20 @@ public class AcadEventsDbContext : DbContext
             .HasForeignKey<Submissao>(s => s.DOIId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // Trilha -> Evento (NO ACTION para evitar ciclo)
+        // Trilha -> Evento (NO ACTION para evitar ciclo, opcional)
         modelBuilder.Entity<Trilha>()
             .HasOne(t => t.Evento)
             .WithMany(e => e.Trilhas)
             .HasForeignKey(t => t.EventoId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.NoAction);
 
-        // TrilhaTematica -> Trilha (CASCADE faz sentido aqui)
+        // TrilhaTematica -> Trilha (CASCADE, opcional)
         modelBuilder.Entity<TrilhaTematica>()
             .HasOne(tt => tt.Trilha)
             .WithMany(t => t.Tematicas)
             .HasForeignKey(tt => tt.TrilhaId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Sessao -> Trilha (CASCADE faz sentido)
