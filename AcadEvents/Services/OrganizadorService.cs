@@ -30,6 +30,11 @@ public class OrganizadorService
         return await _organizadorRepository.FindByIdAsync(id, cancellationToken);
     }
 
+    public async Task<Organizador?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        return await _organizadorRepository.FindByEmailAsync(email, cancellationToken);
+    }
+
     public async Task<Organizador> CreateAsync(OrganizadorRequestDTO request, CancellationToken cancellationToken = default)
     {
         // Verificar se o PerfilORCID existe (se fornecido)

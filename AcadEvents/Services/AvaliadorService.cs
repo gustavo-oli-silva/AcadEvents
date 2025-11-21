@@ -30,6 +30,11 @@ public class AvaliadorService
         return await _avaliadorRepository.FindByIdAsync(id, cancellationToken);
     }
 
+    public async Task<Avaliador?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        return await _avaliadorRepository.FindByEmailAsync(email, cancellationToken);
+    }
+
     public async Task<Avaliador> CreateAsync(AvaliadorRequestDTO request, CancellationToken cancellationToken = default)
     {
         // Verificar se o PerfilORCID existe (se fornecido)

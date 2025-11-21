@@ -70,12 +70,25 @@ public class EventoController : ControllerBase
         return Ok(EventoResponseDTO.ValueOf(evento));
     }
 
-    [HttpPost("organizador/{organizadorId}")]
+    [HttpPost]
+    [Authorize(Roles = "Organizador")]
     public async Task<ActionResult<EventoResponseDTO>> Create(
-        long organizadorId,
         [FromBody] EventoRequestDTO request,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("Organizador tentando criar evento");
+
+        // Extrai o ID do usuário do token
+        var userIdString = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        if (string.IsNullOrEmpty(userIdString) || !long.TryParse(userIdString, out long organizadorId))
+        {
+            _logger.LogWarning("ID do organizador não encontrado no token");
+            return Unauthorized(new { message = "Token inválido" });
+        }
+
         try
         {
             var evento = await _eventoService.CreateAsync(organizadorId, request, cancellationToken);
@@ -83,6 +96,7 @@ public class EventoController : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogWarning(ex, "Erro ao criar evento para organizador {OrganizadorId}", organizadorId);
             return BadRequest(ex.Message);
         }
     }
@@ -118,11 +132,25 @@ public class EventoController : ControllerBase
     }
 
     [HttpPost("{eventoId}/organizadores/{organizadorId}")]
+    [Authorize(Roles = "Organizador")]
     public async Task<ActionResult<EventoResponseDTO>> AddOrganizador(
         long eventoId,
         long organizadorId,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("Organizador tentando adicionar outro organizador ao evento {EventoId}", eventoId);
+
+        // Extrai o ID do usuário do token para validar permissões
+        var userIdString = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        if (string.IsNullOrEmpty(userIdString) || !long.TryParse(userIdString, out long organizadorAutenticadoId))
+        {
+            _logger.LogWarning("ID do organizador não encontrado no token");
+            return Unauthorized(new { message = "Token inválido" });
+        }
+
         try
         {
             var evento = await _eventoService.AddOrganizadorAsync(eventoId, organizadorId, cancellationToken);
@@ -130,16 +158,31 @@ public class EventoController : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogWarning(ex, "Erro ao adicionar organizador {OrganizadorId} ao evento {EventoId}", organizadorId, eventoId);
             return BadRequest(ex.Message);
         }
     }
 
     [HttpDelete("{eventoId}/organizadores/{organizadorId}")]
+    [Authorize(Roles = "Organizador")]
     public async Task<ActionResult<EventoResponseDTO>> RemoveOrganizador(
         long eventoId,
         long organizadorId,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("Organizador tentando remover outro organizador do evento {EventoId}", eventoId);
+
+        // Extrai o ID do usuário do token para validar permissões
+        var userIdString = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
+        if (string.IsNullOrEmpty(userIdString) || !long.TryParse(userIdString, out long organizadorAutenticadoId))
+        {
+            _logger.LogWarning("ID do organizador não encontrado no token");
+            return Unauthorized(new { message = "Token inválido" });
+        }
+
         try
         {
             var evento = await _eventoService.RemoveOrganizadorAsync(eventoId, organizadorId, cancellationToken);
@@ -147,6 +190,7 @@ public class EventoController : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogWarning(ex, "Erro ao remover organizador {OrganizadorId} do evento {EventoId}", organizadorId, eventoId);
             return BadRequest(ex.Message);
         }
     }

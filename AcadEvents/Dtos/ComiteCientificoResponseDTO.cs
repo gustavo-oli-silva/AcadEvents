@@ -9,8 +9,8 @@ public record ComiteCientificoResponseDTO
     public string Tipo { get; init; }
     public string Descricao { get; init; }
     public long EventoId { get; init; }
-    public List<long> AvaliadoresIds { get; init; } = new();
-    public List<long> CoordenadoresIds { get; init; } = new();
+    public List<AvaliadorResponseDTO> Avaliadores { get; init; } = new();
+    public List<OrganizadorResponseDTO> Coordenadores { get; init; } = new();
 
     public static ComiteCientificoResponseDTO ValueOf(ComiteCientifico comite)
     {
@@ -21,8 +21,8 @@ public record ComiteCientificoResponseDTO
             Tipo = comite.Tipo,
             Descricao = comite.Descricao,
             EventoId = comite.EventoId,
-            AvaliadoresIds = comite.MembrosAvaliadores?.Select(a => a.Id).ToList() ?? new List<long>(),
-            CoordenadoresIds = comite.Coordenadores?.Select(o => o.Id).ToList() ?? new List<long>()
+            Avaliadores = comite.MembrosAvaliadores?.Select(a => AvaliadorResponseDTO.ValueOf(a)).ToList() ?? new List<AvaliadorResponseDTO>(),
+            Coordenadores = comite.Coordenadores?.Select(o => OrganizadorResponseDTO.ValueOf(o)).ToList() ?? new List<OrganizadorResponseDTO>()
         };
     }
 }

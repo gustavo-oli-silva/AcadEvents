@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 using AcadEvents.Dtos;
 using AcadEvents.Services;
 
@@ -9,10 +12,14 @@ namespace AcadEvents.Controllers
     public class ComiteCientificoController : ControllerBase
     {
         private readonly ComiteCientificoService _comiteCientificoService;
+        private readonly ILogger<ComiteCientificoController> _logger;
 
-        public ComiteCientificoController(ComiteCientificoService comiteCientificoService)
+        public ComiteCientificoController(
+            ComiteCientificoService comiteCientificoService,
+            ILogger<ComiteCientificoController> logger)
         {
             _comiteCientificoService = comiteCientificoService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -33,13 +40,26 @@ namespace AcadEvents.Controllers
             return Ok(ComiteCientificoResponseDTO.ValueOf(comite));
         }
 
-        [HttpPost("evento/{eventoId}/organizador/{organizadorId}")]
+        [HttpPost("evento/{eventoId}")]
+        [Authorize(Roles = "Organizador")]
         public async Task<ActionResult<ComiteCientificoResponseDTO>> Create(
             long eventoId,
-            long organizadorId,
             [FromBody] ComiteCientificoRequestDTO request,
             CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Organizador tentando criar comitê científico para evento {EventoId}", eventoId);
+
+            // Extrai o ID do usuário do token
+            var userIdString = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub");
+
+            if (string.IsNullOrEmpty(userIdString) || !long.TryParse(userIdString, out long organizadorId))
+            {
+                _logger.LogWarning("ID do organizador não encontrado no token");
+                return Unauthorized(new { message = "Token inválido" });
+            }
+
             try
             {
                 var comite = await _comiteCientificoService.CreateAsync(eventoId, organizadorId, request, cancellationToken);
@@ -47,6 +67,7 @@ namespace AcadEvents.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning(ex, "Erro ao criar comitê científico para evento {EventoId}", eventoId);
                 return BadRequest(ex.Message);
             }
         }
@@ -116,11 +137,25 @@ namespace AcadEvents.Controllers
         }
 
         [HttpPost("{comiteId}/coordenadores/{organizadorId}")]
+        [Authorize(Roles = "Organizador")]
         public async Task<ActionResult<ComiteCientificoResponseDTO>> AddCoordenador(
             long comiteId,
             long organizadorId,
             CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Organizador tentando adicionar coordenador {OrganizadorId} ao comitê {ComiteId}", organizadorId, comiteId);
+
+            // Extrai o ID do usuário do token para validar permissões
+            var userIdString = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub");
+
+            if (string.IsNullOrEmpty(userIdString) || !long.TryParse(userIdString, out long organizadorAutenticadoId))
+            {
+                _logger.LogWarning("ID do organizador não encontrado no token");
+                return Unauthorized(new { message = "Token inválido" });
+            }
+
             try
             {
                 var comite = await _comiteCientificoService.AddCoordenadorAsync(comiteId, organizadorId, cancellationToken);
@@ -128,16 +163,31 @@ namespace AcadEvents.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning(ex, "Erro ao adicionar coordenador {OrganizadorId} ao comitê {ComiteId}", organizadorId, comiteId);
                 return BadRequest(ex.Message);
             }
         }
 
         [HttpDelete("{comiteId}/coordenadores/{organizadorId}")]
+        [Authorize(Roles = "Organizador")]
         public async Task<ActionResult<ComiteCientificoResponseDTO>> RemoveCoordenador(
             long comiteId,
             long organizadorId,
             CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("Organizador tentando remover coordenador {OrganizadorId} do comitê {ComiteId}", organizadorId, comiteId);
+
+            // Extrai o ID do usuário do token para validar permissões
+            var userIdString = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub");
+
+            if (string.IsNullOrEmpty(userIdString) || !long.TryParse(userIdString, out long organizadorAutenticadoId))
+            {
+                _logger.LogWarning("ID do organizador não encontrado no token");
+                return Unauthorized(new { message = "Token inválido" });
+            }
+
             try
             {
                 var comite = await _comiteCientificoService.RemoveCoordenadorAsync(comiteId, organizadorId, cancellationToken);
@@ -145,6 +195,7 @@ namespace AcadEvents.Controllers
             }
             catch (ArgumentException ex)
             {
+                _logger.LogWarning(ex, "Erro ao remover coordenador {OrganizadorId} do comitê {ComiteId}", organizadorId, comiteId);
                 return BadRequest(ex.Message);
             }
         }

@@ -1,6 +1,8 @@
 using System.Linq;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.IdentityModel.Tokens.Jwt;
 using AcadEvents.Services;
 using AcadEvents.Dtos;
 
@@ -11,10 +13,14 @@ namespace AcadEvents.Controllers;
 public class ConviteAvaliacaoController : ControllerBase
 {
     private readonly ConviteAvaliacaoService _service;
+    private readonly ILogger<ConviteAvaliacaoController> _logger;
 
-    public ConviteAvaliacaoController(ConviteAvaliacaoService service)
+    public ConviteAvaliacaoController(
+        ConviteAvaliacaoService service,
+        ILogger<ConviteAvaliacaoController> logger)
     {
         _service = service;
+        _logger = logger;
     }
 
     [HttpGet("{id}")]
@@ -69,34 +75,23 @@ public class ConviteAvaliacaoController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPost("organizador/{organizadorId}")]
+    [HttpPost]
+    [Authorize(Roles = "Organizador")]
     public async Task<ActionResult<List<ConviteAvaliacaoResponseDTO>>> Create(
-        long organizadorId,
         [FromBody] ConviteAvaliacaoRequestDTO request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var convites = await _service.CreateAsync(organizadorId, request, cancellationToken);
-            var response = convites.Select(ConviteAvaliacaoResponseDTO.ValueOf).ToList();
-            return CreatedAtAction(nameof(GetAll), response);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-    }
+        _logger.LogInformation("Organizador tentando criar convites de avaliação");
 
-    [HttpPost("criar")]
-    public async Task<ActionResult<List<ConviteAvaliacaoResponseDTO>>> CreateFromJWT(
-        [FromBody] ConviteAvaliacaoRequestDTO request,
-        CancellationToken cancellationToken = default)
-    {
-        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        
+        // Extrai o ID do usuário do token
+        var userIdString = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+
         if (string.IsNullOrEmpty(userIdString) || !long.TryParse(userIdString, out var organizadorId))
         {
-            return Unauthorized("Token JWT inválido ou sem identificador de usuário.");
+            _logger.LogWarning("ID do organizador não encontrado no token");
+            return Unauthorized(new { message = "Token JWT inválido ou sem identificador de usuário." });
         }
 
         try
@@ -107,6 +102,7 @@ public class ConviteAvaliacaoController : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogWarning(ex, "Erro ao criar convites de avaliação para organizador {OrganizadorId}", organizadorId);
             return BadRequest(ex.Message);
         }
     }

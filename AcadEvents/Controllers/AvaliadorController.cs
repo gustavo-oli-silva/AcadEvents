@@ -23,6 +23,16 @@ namespace AcadEvents.Controllers
             return Ok(avaliadoresDTO);
         }
 
+        [HttpGet("email/{email}")]
+        public async Task<ActionResult<AvaliadorResponseDTO>> GetByEmail(string email, CancellationToken cancellationToken = default)
+        {
+            var avaliador = await _avaliadorService.GetByEmailAsync(email, cancellationToken);
+            if (avaliador == null)
+                return NotFound($"Avaliador com email {email} não encontrado.");
+
+            return Ok(AvaliadorResponseDTO.ValueOf(avaliador));
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<AvaliadorResponseDTO>> GetById(long id, CancellationToken cancellationToken = default)
         {
