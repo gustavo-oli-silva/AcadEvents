@@ -67,24 +67,18 @@ public class AvaliacaoService
             throw new ArgumentException($"O avaliador {request.AvaliadorId} não aceitou o convite de avaliação para a submissão {request.SubmissaoId}.");
         }
 
-        // Verificar se a submissão está associada a uma trilha temática e trilha
-        if (submissao.TrilhaTematica?.Trilha == null)
+        // Verificar se a submissão está associada a um evento
+        if (submissao.Evento == null)
         {
-            throw new ArgumentException($"A submissão {request.SubmissaoId} não está associada a uma trilha temática ou a trilha temática não está associada a uma trilha.");
+            throw new ArgumentException($"A submissão {request.SubmissaoId} não está associada a um evento.");
         }
 
-        // Obter o evento através da trilha temática -> trilha -> evento
-        var eventoId = submissao.TrilhaTematica.Trilha.EventoId;
-
-        if (!eventoId.HasValue)
-        {
-            throw new ArgumentException($"A submissão {request.SubmissaoId} não está associada a um evento (trilha não associada a evento).");
-        }
+        var eventoId = submissao.EventoId;
 
         // Verificar se o avaliador faz parte do comitê científico do evento
         var fazParteDoComite = await _comiteCientificoRepository.AvaliadorFazParteDoComiteDoEventoAsync(
             request.AvaliadorId, 
-            eventoId.Value, 
+            eventoId, 
             cancellationToken);
 
         if (!fazParteDoComite)

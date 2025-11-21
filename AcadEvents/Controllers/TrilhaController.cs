@@ -72,17 +72,35 @@ public class TrilhaController : ControllerBase
         }
     }
 
-    [HttpPost("{trilhaId}/evento/{eventoId}")]
+    [HttpPatch("{trilhaId}/evento/{eventoId}")]
     [Authorize(Roles = "Organizador")]
-    public async Task<ActionResult<TrilhaResponseDTO>> AssociateToEvento(
+    public async Task<IActionResult> AssociateToEvento(
         long trilhaId,
         long eventoId,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var trilha = await _trilhaService.AssociateToEventoAsync(trilhaId, eventoId, cancellationToken);
-            return Ok(TrilhaResponseDTO.ValueOf(trilha));
+            await _trilhaService.AssociateToEventoAsync(trilhaId, eventoId, cancellationToken);
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("{trilhaId}/evento/{eventoId}")]
+    [Authorize(Roles = "Organizador")]
+    public async Task<IActionResult> RemoveFromEvento(
+        long trilhaId,
+        long eventoId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _trilhaService.RemoveFromEventoAsync(trilhaId, eventoId, cancellationToken);
+            return NoContent();
         }
         catch (ArgumentException ex)
         {

@@ -58,24 +58,18 @@ public class ConviteAvaliacaoService
             throw new ArgumentException($"Submissão {request.SubmissaoId} não existe.");
         }
 
-        if (submissao.TrilhaTematica?.Trilha == null)
+        if (submissao.Evento == null)
         {
-            throw new ArgumentException($"A submissão {request.SubmissaoId} não está associada a uma trilha temática ou a trilha temática não está associada a uma trilha.");
+            throw new ArgumentException($"A submissão {request.SubmissaoId} não está associada a um evento.");
         }
 
-        // Obter o evento através da trilha temática -> trilha -> evento
-        var eventoId = submissao.TrilhaTematica.Trilha.EventoId;
-        
-        if (!eventoId.HasValue)
-        {
-            throw new ArgumentException($"A submissão {request.SubmissaoId} não está associada a um evento (trilha não associada a evento).");
-        }
+        var eventoId = submissao.EventoId;
 
         // Verificar se o organizador existe e é organizador do evento
-        var evento = await _eventoRepository.FindByIdWithOrganizadoresAsync(eventoId.Value, cancellationToken);
+        var evento = await _eventoRepository.FindByIdWithOrganizadoresAsync(eventoId, cancellationToken);
         if (evento == null)
         {
-            throw new ArgumentException($"Evento {eventoId.Value} não encontrado.");
+            throw new ArgumentException($"Evento {eventoId} não encontrado.");
         }
 
         var organizador = await _organizadorRepository.FindByIdAsync(organizadorId, cancellationToken);
@@ -86,7 +80,7 @@ public class ConviteAvaliacaoService
 
         if (!evento.Organizadores.Contains(organizador))
         {
-            throw new ArgumentException($"O organizador {organizadorId} não é organizador do evento {eventoId.Value} relacionado à submissão.");
+            throw new ArgumentException($"O organizador {organizadorId} não é organizador do evento {eventoId} relacionado à submissão.");
         }
 
         // Obter os avaliadores do comitê científico do evento
@@ -96,7 +90,7 @@ public class ConviteAvaliacaoService
         {
             // Validar se os avaliadores fornecidos fazem parte do comitê do evento
             avaliadoresParaConvidar = new List<Avaliador>();
-            var avaliadoresDoComite = await _comiteCientificoRepository.FindAvaliadoresDoComiteDoEventoAsync(eventoId.Value, cancellationToken);
+            var avaliadoresDoComite = await _comiteCientificoRepository.FindAvaliadoresDoComiteDoEventoAsync(eventoId, cancellationToken);
             var avaliadoresIdsDoComite = avaliadoresDoComite.Select(a => a.Id).ToHashSet();
 
             foreach (var avaliadorId in request.AvaliadoresIds)
@@ -109,7 +103,7 @@ public class ConviteAvaliacaoService
 
                 if (!avaliadoresIdsDoComite.Contains(avaliadorId))
                 {
-                    throw new ArgumentException($"O avaliador {avaliadorId} não faz parte do comitê científico do evento {eventoId.Value}.");
+                    throw new ArgumentException($"O avaliador {avaliadorId} não faz parte do comitê científico do evento {eventoId}.");
                 }
 
                 // Verificar se já existe um convite para este avaliador e submissão
@@ -125,11 +119,11 @@ public class ConviteAvaliacaoService
         else
         {
             // Buscar todos os avaliadores do comitê científico do evento
-            avaliadoresParaConvidar = await _comiteCientificoRepository.FindAvaliadoresDoComiteDoEventoAsync(eventoId.Value, cancellationToken);
+            avaliadoresParaConvidar = await _comiteCientificoRepository.FindAvaliadoresDoComiteDoEventoAsync(eventoId, cancellationToken);
             
             if (!avaliadoresParaConvidar.Any())
             {
-                throw new ArgumentException($"Não existem avaliadores no comitê científico do evento {eventoId.Value}.");
+                throw new ArgumentException($"Não existem avaliadores no comitê científico do evento {eventoId}.");
             }
 
             // Filtrar apenas aqueles que ainda não receberam convite para esta submissão

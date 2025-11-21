@@ -8,6 +8,7 @@ public class SubmissaoService
 {
     private readonly SubmissaoRepository _submissaoRepository;
     private readonly AutorRepository _autorRepository;
+    private readonly EventoRepository _eventoRepository;
     private readonly TrilhaTematicaRepository _trilhaTematicaRepository;
     private readonly SessaoRepository _sessaoRepository;
     private readonly DOIRepository _doiRepository;
@@ -15,12 +16,14 @@ public class SubmissaoService
     public SubmissaoService(
         SubmissaoRepository submissaoRepository,
         AutorRepository autorRepository,
+        EventoRepository eventoRepository,
         TrilhaTematicaRepository trilhaTematicaRepository,
         SessaoRepository sessaoRepository,
         DOIRepository doiRepository)
     {
         _submissaoRepository = submissaoRepository;
         _autorRepository = autorRepository;
+        _eventoRepository = eventoRepository;
         _trilhaTematicaRepository = trilhaTematicaRepository;
         _sessaoRepository = sessaoRepository;
         _doiRepository = doiRepository;
@@ -69,6 +72,7 @@ public class SubmissaoService
         entity.Status = request.Status;
         entity.Formato = request.Formato;
         entity.AutorId = request.AutorId;
+        entity.EventoId = request.EventoId;
         entity.TrilhaTematicaId = request.TrilhaTematicaId;
         entity.SessaoId = request.SessaoId;
         entity.DOIId = request.DOIId;
@@ -80,6 +84,11 @@ public class SubmissaoService
         if (!await _autorRepository.ExistsAsync(request.AutorId, cancellationToken))
         {
             throw new ArgumentException($"Autor {request.AutorId} não existe.");
+        }
+
+        if (!await _eventoRepository.ExistsAsync(request.EventoId, cancellationToken))
+        {
+            throw new ArgumentException($"Evento {request.EventoId} não existe.");
         }
 
         if (!await _trilhaTematicaRepository.ExistsAsync(request.TrilhaTematicaId, cancellationToken))

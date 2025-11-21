@@ -99,11 +99,18 @@ public class AcadEventsDbContext : DbContext
         // Configuração de relacionamentos um-para-muitos com controle de cascade
         // Evita múltiplos caminhos de cascade que causam erro no SQL Server
         
-        // Submissao -> Autor (NO ACTION para evitar ciclo com Evento -> Trilha -> Submissao)
+        // Submissao -> Autor (NO ACTION para evitar ciclo)
         modelBuilder.Entity<Submissao>()
             .HasOne(s => s.Autor)
             .WithMany(a => a.Submissoes)
             .HasForeignKey(s => s.AutorId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // Submissao -> Evento (NO ACTION)
+        modelBuilder.Entity<Submissao>()
+            .HasOne(s => s.Evento)
+            .WithMany()
+            .HasForeignKey(s => s.EventoId)
             .OnDelete(DeleteBehavior.NoAction);
 
         // Submissao -> TrilhaTematica (NO ACTION)
@@ -127,13 +134,12 @@ public class AcadEventsDbContext : DbContext
             .HasForeignKey<Submissao>(s => s.DOIId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // Trilha -> Evento (NO ACTION para evitar ciclo, opcional)
+        // Configuração de relacionamento muitos-para-muitos
+        // Trilha <-> Evento (N:N)
         modelBuilder.Entity<Trilha>()
-            .HasOne(t => t.Evento)
+            .HasMany(t => t.Eventos)
             .WithMany(e => e.Trilhas)
-            .HasForeignKey(t => t.EventoId)
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.NoAction);
+            .UsingEntity(j => j.ToTable("EventoTrilha"));
 
         // TrilhaTematica -> Trilha (CASCADE, opcional)
         modelBuilder.Entity<TrilhaTematica>()
