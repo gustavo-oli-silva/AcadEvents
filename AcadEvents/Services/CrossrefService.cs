@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AcadEvents.Dtos;
@@ -31,30 +32,57 @@ public class CrossrefService : ICrossrefService
 
         try
         {
-            // Remove espaços e caracteres especiais do DOI
-            var cleanDoi = doi.Trim();
+            // Limpar e normalizar o DOI
+            var cleanDoi = doi;
             
             _logger.LogInformation("Buscando work no Crossref para DOI: {DOI}", cleanDoi);
 
-            var response = await _httpClient.GetAsync($"works/{cleanDoi}", cancellationToken);
+            // Construir a URL usando BaseAddress + path relativo
+            // O HttpClient combina BaseAddress com o path relativo automaticamente
+            // Usamos o path relativo diretamente para preservar a estrutura do DOI
+            var relativePath = $"works/{cleanDoi}";
+            
+            _logger.LogDebug("Path relativo: {Path}", relativePath);
+            
+            // Quando BaseAddress está configurado, HttpClient combina automaticamente
+            // A barra no DOI será preservada como parte do path
+            var response = await _httpClient.GetAsync(relativePath, cancellationToken);
             
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Falha ao buscar work no Crossref. Status: {StatusCode}, DOI: {DOI}", 
-                    response.StatusCode, cleanDoi);
+                    response.StatusCode, doi);
                 return null;
             }
 
-            var crossrefResponse = await response.Content.ReadFromJsonAsync<CrossrefResponseDTO>(_jsonOptions, cancellationToken);
+            CrossrefResponseDTO? crossrefResponse;
+            try
+            {
+                crossrefResponse = await response.Content.ReadFromJsonAsync<CrossrefResponseDTO>(_jsonOptions, cancellationToken);
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger.LogError(jsonEx, "Erro ao deserializar JSON do Crossref para DOI: {DOI}. Erro: {Message}", doi, jsonEx.Message);
+                
+                // Tentar ler o conteúdo bruto para debug
+                var rawContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                if (!string.IsNullOrEmpty(rawContent))
+                {
+                    var previewLength = Math.Min(500, rawContent.Length);
+                    _logger.LogDebug("Conteúdo da resposta do Crossref: {Content}", rawContent.Substring(0, previewLength));
+                }
+                
+                return null;
+            }
             
             if (crossrefResponse?.Message == null)
             {
-                _logger.LogWarning("Resposta do Crossref não contém dados válidos para DOI: {DOI}", cleanDoi);
+                _logger.LogWarning("Resposta do Crossref não contém dados válidos para DOI: {DOI}", doi);
                 return null;
             }
 
             var work = MapToWorkDTO(crossrefResponse.Message);
-            _logger.LogInformation("Work obtido com sucesso do Crossref para DOI: {DOI}", cleanDoi);
+            _logger.LogInformation("Work obtido com sucesso do Crossref para DOI: {DOI}", doi);
             
             return work;
         }

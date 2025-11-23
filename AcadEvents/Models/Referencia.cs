@@ -6,9 +6,11 @@ public class Referencia : DefaultModel
     public string Titulo { get; set; }
     public int Ano { get; set; }
     public string Publicacao { get; set; }
-    public string Volume { get; set; }
-    public string Paginas { get; set; }
-    public string FormatoABNT { get; set; }
+
+    // Campos adicionais do Crossref
+    public string? Abstract { get; set; }
+    public string? TipoPublicacao { get; set; }
+    public string? Publisher { get; set; }
 
     // Relacionamento Inverso: 1 Referencia -> 1 Submissao
     public long SubmissaoId { get; set; }

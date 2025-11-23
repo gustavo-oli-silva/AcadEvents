@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace AcadEvents.Dtos;
 
 public record CrossrefWorkDTO
@@ -30,8 +33,49 @@ public record CrossrefMessageDTO
     public CrossrefDateDTO? PublishedPrint { get; init; }
     public CrossrefDateDTO? PublishedOnline { get; init; }
     public string? Type { get; init; }
+    
+    [JsonConverter(typeof(UrlConverter))]
     public List<string>? URL { get; init; }
+    
     public string? Abstract { get; init; }
+}
+
+// Conversor customizado para lidar com URL que pode vir como string ou array
+public class UrlConverter : JsonConverter<List<string>>
+{
+    public override List<string>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            var url = reader.GetString();
+            return url != null ? new List<string> { url } : null;
+        }
+        
+        if (reader.TokenType == JsonTokenType.StartArray)
+        {
+            return JsonSerializer.Deserialize<List<string>>(ref reader, options);
+        }
+        
+        // Se for null ou outro tipo, retornar null
+        reader.Skip();
+        return null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, List<string>? value, JsonSerializerOptions options)
+    {
+        if (value == null || value.Count == 0)
+        {
+            writer.WriteNullValue();
+        }
+        else if (value.Count == 1)
+        {
+            writer.WriteStringValue(value[0]);
+        }
+        else
+        {
+            JsonSerializer.Serialize(writer, value, options);
+        }
+    }
 }
 
 public record CrossrefAuthorDTO

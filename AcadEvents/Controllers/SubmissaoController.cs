@@ -1,4 +1,7 @@
 using System.Linq;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AcadEvents.Dtos;
 using AcadEvents.Services;
@@ -30,13 +33,24 @@ public class SubmissaoController(SubmissaoService submissaoService) : Controller
     }
 
     [HttpPost]
+    [Authorize(Roles = "Autor")]
     public async Task<ActionResult<SubmissaoResponseDTO>> Create(
         [FromBody] SubmissaoRequestDTO request,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var submissao = await submissaoService.CreateAsync(request, cancellationToken);
+            // Extrair o ID do autor do token
+            var userIdString = User.FindFirstValue(JwtRegisteredClaimNames.Sub) 
+                ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User.FindFirstValue("sub");
+                
+            if (string.IsNullOrEmpty(userIdString) || !long.TryParse(userIdString, out long autorId))
+            {
+                return Unauthorized(new { message = "Token inválido: ID do autor não encontrado." });
+            }
+
+            var submissao = await submissaoService.CreateAsync(request, autorId, cancellationToken);
             var response = SubmissaoResponseDTO.ValueOf(submissao);
             return CreatedAtAction(nameof(GetById), new { id = response.Id }, response);
         }

@@ -12,11 +12,8 @@ public record SubmissaoRequestDTO
     public int Versao { get; init; }
     public StatusSubmissao Status { get; init; }
     public FormatoSubmissao Formato { get; init; }
-    public long AutorId { get; init; }
     public long EventoId { get; init; }
     public long TrilhaTematicaId { get; init; }
-    public long? SessaoId { get; init; }
-    public long? DOIId { get; init; }
 }
 
 

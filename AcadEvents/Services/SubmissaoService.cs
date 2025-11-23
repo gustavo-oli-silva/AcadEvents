@@ -10,23 +10,17 @@ public class SubmissaoService
     private readonly AutorRepository _autorRepository;
     private readonly EventoRepository _eventoRepository;
     private readonly TrilhaTematicaRepository _trilhaTematicaRepository;
-    private readonly SessaoRepository _sessaoRepository;
-    private readonly DOIRepository _doiRepository;
 
     public SubmissaoService(
         SubmissaoRepository submissaoRepository,
         AutorRepository autorRepository,
         EventoRepository eventoRepository,
-        TrilhaTematicaRepository trilhaTematicaRepository,
-        SessaoRepository sessaoRepository,
-        DOIRepository doiRepository)
+        TrilhaTematicaRepository trilhaTematicaRepository)
     {
         _submissaoRepository = submissaoRepository;
         _autorRepository = autorRepository;
         _eventoRepository = eventoRepository;
         _trilhaTematicaRepository = trilhaTematicaRepository;
-        _sessaoRepository = sessaoRepository;
-        _doiRepository = doiRepository;
     }
 
     public Task<List<Submissao>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -35,11 +29,11 @@ public class SubmissaoService
     public Task<Submissao?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         => _submissaoRepository.FindByIdAsync(id, cancellationToken);
 
-    public async Task<Submissao> CreateAsync(SubmissaoRequestDTO request, CancellationToken cancellationToken = default)
+    public async Task<Submissao> CreateAsync(SubmissaoRequestDTO request, long autorId, CancellationToken cancellationToken = default)
     {
-        await ValidateReferencesAsync(request, cancellationToken);
+        await ValidateReferencesAsync(request, autorId, cancellationToken);
 
-        var submissao = MapToEntity(new Submissao(), request);
+        var submissao = MapToEntity(new Submissao(), request, autorId);
         return await _submissaoRepository.CreateAsync(submissao, cancellationToken);
     }
 
@@ -51,9 +45,10 @@ public class SubmissaoService
             return null;
         }
 
-        await ValidateReferencesAsync(request, cancellationToken);
+        // No update, mantemos o autor original (ou pode extrair do token se necessário)
+        await ValidateReferencesAsync(request, submissao.AutorId, cancellationToken);
 
-        MapToEntity(submissao, request);
+        MapToEntity(submissao, request, submissao.AutorId);
         await _submissaoRepository.UpdateAsync(submissao, cancellationToken);
         return submissao;
     }
@@ -61,7 +56,7 @@ public class SubmissaoService
     public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
         => _submissaoRepository.DeleteAsync(id, cancellationToken);
 
-    private Submissao MapToEntity(Submissao entity, SubmissaoRequestDTO request)
+    private Submissao MapToEntity(Submissao entity, SubmissaoRequestDTO request, long autorId)
     {
         entity.Titulo = request.Titulo;
         entity.Resumo = request.Resumo;
@@ -71,19 +66,20 @@ public class SubmissaoService
         entity.Versao = request.Versao;
         entity.Status = request.Status;
         entity.Formato = request.Formato;
-        entity.AutorId = request.AutorId;
+        entity.AutorId = autorId;
         entity.EventoId = request.EventoId;
         entity.TrilhaTematicaId = request.TrilhaTematicaId;
-        entity.SessaoId = request.SessaoId;
-        entity.DOIId = request.DOIId;
+        // SessaoId e DOIId não são mais definidos na criação
+        // entity.SessaoId = null;
+        // entity.DOIId = null;
         return entity;
     }
 
-    private async Task ValidateReferencesAsync(SubmissaoRequestDTO request, CancellationToken cancellationToken)
+    private async Task ValidateReferencesAsync(SubmissaoRequestDTO request, long autorId, CancellationToken cancellationToken)
     {
-        if (!await _autorRepository.ExistsAsync(request.AutorId, cancellationToken))
+        if (!await _autorRepository.ExistsAsync(autorId, cancellationToken))
         {
-            throw new ArgumentException($"Autor {request.AutorId} não existe.");
+            throw new ArgumentException($"Autor {autorId} não existe.");
         }
 
         if (!await _eventoRepository.ExistsAsync(request.EventoId, cancellationToken))
@@ -96,17 +92,7 @@ public class SubmissaoService
             throw new ArgumentException($"Trilha temática {request.TrilhaTematicaId} não existe.");
         }
 
-        if (request.SessaoId.HasValue &&
-            !await _sessaoRepository.ExistsAsync(request.SessaoId.Value, cancellationToken))
-        {
-            throw new ArgumentException($"Sessão {request.SessaoId} não existe.");
-        }
-
-        if (request.DOIId.HasValue &&
-            !await _doiRepository.ExistsAsync(request.DOIId.Value, cancellationToken))
-        {
-            throw new ArgumentException($"DOI {request.DOIId} não existe.");
-        }
+        // Validações de SessaoId e DOIId removidas - não são mais necessárias na criação
     }
 }
 

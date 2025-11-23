@@ -1,20 +1,23 @@
 using AcadEvents.Dtos;
 using AcadEvents.Models;
 using AcadEvents.Repositories;
-
+using AcadEvents.Services;
 namespace AcadEvents.Services;
 
 public class AutorService
 {
     private readonly AutorRepository _autorRepository;
     private readonly PerfilORCIDRepository _perfilORCIDRepository;
+    private readonly HashService _hashService;
 
     public AutorService(
         AutorRepository autorRepository,
-        PerfilORCIDRepository perfilORCIDRepository)
+        PerfilORCIDRepository perfilORCIDRepository,
+        HashService hashService)
     {
         _autorRepository = autorRepository;
         _perfilORCIDRepository = perfilORCIDRepository;
+        _hashService = hashService;
     }
 
     public async Task<List<Autor>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -41,7 +44,7 @@ public class AutorService
         {
             Nome = request.Nome,
             Email = request.Email,
-            Senha = request.Senha,
+            Senha = _hashService.HashPassword(request.Senha),
             Instituicao = request.Instituicao,
             Pais = request.Pais,
             DataCadastro = DateTime.UtcNow,

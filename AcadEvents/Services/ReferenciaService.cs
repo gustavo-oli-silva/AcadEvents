@@ -29,7 +29,7 @@ public class ReferenciaService
 
     public async Task<Referencia> CreateFromDoiAsync(
         string doi,
-        long? submissaoId = null,
+        long submissaoId,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(doi))
@@ -37,14 +37,11 @@ public class ReferenciaService
             throw new ArgumentException("DOI não pode ser nulo ou vazio.", nameof(doi));
         }
 
-        // Validar Submissao se fornecida
-        if (submissaoId.HasValue && submissaoId.Value > 0)
+        // Validar que a Submissão existe e é válida
+        var submissao = await _submissaoRepository.FindByIdAsync(submissaoId, cancellationToken);
+        if (submissao == null)
         {
-            var submissao = await _submissaoRepository.FindByIdAsync(submissaoId.Value, cancellationToken);
-            if (submissao == null)
-            {
-                throw new ArgumentException($"Submissão com Id {submissaoId.Value} não encontrada.", nameof(submissaoId));
-            }
+            throw new ArgumentException($"Submissão com Id {submissaoId} não encontrada.", nameof(submissaoId));
         }
 
         _logger.LogInformation("Criando referência a partir do DOI: {DOI}", doi);
@@ -86,23 +83,31 @@ public class ReferenciaService
             ? string.Join("; ", work.Author)
             : string.Empty;
 
-        // Para teste, se submissaoId não for fornecido, usar 0 (pode causar erro de FK, mas permite testar)
-        // Em produção, submissaoId deve ser obrigatório
         var referencia = new Referencia
         {
             Autores = autores,
             Titulo = work.Title ?? string.Empty,
             Ano = ano,
             Publicacao = work.ContainerTitle ?? work.Publisher ?? string.Empty,
-            Volume = string.Empty, // Não disponível no Crossref
-            Paginas = string.Empty, // Não disponível no Crossref
-            FormatoABNT = string.Empty, // Gerar depois se necessário
-            SubmissaoId = submissaoId ?? 0, // Para teste apenas - em produção deve ser obrigatório
+            Abstract = work.Abstract,
+            TipoPublicacao = work.Type,
+            Publisher = work.Publisher,
+            SubmissaoId = submissaoId,
             DOIId = doiEntity.Id
         };
 
         _logger.LogInformation("Criando referência no banco de dados para DOI: {DOI}", doiCodigo);
         return await _referenciaRepository.CreateAsync(referencia, cancellationToken);
+    }
+
+    public async Task<List<Referencia>> GetBySubmissaoIdAsync(long submissaoId, CancellationToken cancellationToken = default)
+    {
+        return await _referenciaRepository.FindBySubmissaoIdAsync(submissaoId, cancellationToken);
+    }
+
+    public async Task<Referencia?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
+    {
+        return await _referenciaRepository.FindByIdWithDOIAsync(id, cancellationToken);
     }
 
     private static int ExtractYear(string? publishedPrint, string? publishedOnline)
