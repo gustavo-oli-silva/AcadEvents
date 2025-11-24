@@ -45,6 +45,7 @@ public static class InjectExt
         service.AddScoped<JwtService>();
         service.AddScoped<HashService>();
         service.AddScoped<AuthService>();
+        service.AddScoped<IEmailService, EmailService>();
         // CrossrefService é registrado via AddHttpClient no Program.cs
     }
 }

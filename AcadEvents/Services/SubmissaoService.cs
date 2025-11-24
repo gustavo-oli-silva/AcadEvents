@@ -2,6 +2,7 @@ using AcadEvents.Dtos;
 using AcadEvents.Models;
 using AcadEvents.Repositories;
 using Microsoft.AspNetCore.Http;
+using AcadEvents.Services.EmailTemplates;
 
 namespace AcadEvents.Services;
 
@@ -13,6 +14,7 @@ public class SubmissaoService
     private readonly TrilhaTematicaRepository _trilhaTematicaRepository;
     private readonly ReferenciaService _referenciaService;
     private readonly ArquivoSubmissaoService _arquivoSubmissaoService;
+    private readonly IEmailService _emailService;
     
     public SubmissaoService(
         SubmissaoRepository submissaoRepository,
@@ -20,7 +22,8 @@ public class SubmissaoService
         EventoRepository eventoRepository,
         TrilhaTematicaRepository trilhaTematicaRepository,
         ReferenciaService referenciaService,
-        ArquivoSubmissaoService arquivoSubmissaoService)
+        ArquivoSubmissaoService arquivoSubmissaoService,
+        IEmailService emailService)
     {
         _submissaoRepository = submissaoRepository;
         _autorRepository = autorRepository;
@@ -28,6 +31,7 @@ public class SubmissaoService
         _trilhaTematicaRepository = trilhaTematicaRepository;
         _referenciaService = referenciaService;
         _arquivoSubmissaoService = arquivoSubmissaoService;
+        _emailService = emailService;
     }
 
     public Task<List<Submissao>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -68,7 +72,7 @@ public class SubmissaoService
 
     public async Task<Submissao?> UpdateAsync(long id, SubmissaoRequestDTO request, CancellationToken cancellationToken = default)
     {
-        var submissao = await _submissaoRepository.FindByIdAsync(id, cancellationToken);
+        var submissao = await _submissaoRepository.FindByIdWithRelacionamentosAsync(id, cancellationToken);
         if (submissao is null)
         {
             return null;
@@ -79,6 +83,31 @@ public class SubmissaoService
 
         MapToEntity(submissao, request, submissao.AutorId);
         await _submissaoRepository.UpdateAsync(submissao, cancellationToken);
+
+        // Enviar email ao autor se a submissão foi atualizada
+        if (submissao.Autor != null)
+        {
+            try
+            {
+                var emailBody = EmailTemplateService.AtualizacaoSubmissaoTemplate(
+                    submissao.Autor.Nome,
+                    submissao.Titulo,
+                    submissao.Status.ToString(),
+                    submissao.DataUltimaModificacao);
+                
+                await _emailService.SendEmailAsync(
+                    submissao.Autor.Email,
+                    $"Atualização da Submissão: {submissao.Titulo}",
+                    emailBody,
+                    isHtml: true,
+                    cancellationToken);
+            }
+            catch
+            {
+                // Erro no envio de email não deve quebrar o fluxo principal
+            }
+        }
+
         return submissao;
     }
 

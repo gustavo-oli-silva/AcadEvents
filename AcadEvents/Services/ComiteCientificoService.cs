@@ -1,6 +1,7 @@
 using AcadEvents.Dtos;
 using AcadEvents.Models;
 using AcadEvents.Repositories;
+using AcadEvents.Services.EmailTemplates;
 
 namespace AcadEvents.Services;
 
@@ -10,17 +11,20 @@ public class ComiteCientificoService
     private readonly EventoRepository _eventoRepository;
     private readonly OrganizadorRepository _organizadorRepository;
     private readonly AvaliadorRepository _avaliadorRepository;
+    private readonly IEmailService _emailService;
 
     public ComiteCientificoService(
         ComiteCientificoRepository comiteCientificoRepository,
         EventoRepository eventoRepository,
         OrganizadorRepository organizadorRepository,
-        AvaliadorRepository avaliadorRepository)
+        AvaliadorRepository avaliadorRepository,
+        IEmailService emailService)
     {
         _comiteCientificoRepository = comiteCientificoRepository;
         _eventoRepository = eventoRepository;
         _organizadorRepository = organizadorRepository;
         _avaliadorRepository = avaliadorRepository;
+        _emailService = emailService;
     }
 
     public async Task<List<ComiteCientifico>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -93,6 +97,36 @@ public class ComiteCientificoService
         var comiteCriado = await _comiteCientificoRepository.CreateAsync(comite, cancellationToken);
         // Recarregar com relacionamentos para garantir que estão incluídos
         var comiteCompleto = await _comiteCientificoRepository.FindByIdWithRelacionamentosAsync(comiteCriado.Id, cancellationToken);
+        
+        // Enviar email para todos os avaliadores adicionados ao comitê
+        if (comiteCompleto != null && comiteCompleto.MembrosAvaliadores.Any())
+        {
+            foreach (var avaliador in comiteCompleto.MembrosAvaliadores)
+            {
+                try
+                {
+                    var emailBody = EmailTemplateService.AdicionadoAoComiteCientificoTemplate(
+                        avaliador.Nome,
+                        organizador.Nome,
+                        comiteCompleto.Nome,
+                        evento.Nome,
+                        comiteCompleto.Tipo,
+                        comiteCompleto.Descricao);
+                    
+                    await _emailService.SendEmailAsync(
+                        avaliador.Email,
+                        $"Você foi adicionado ao Comitê Científico: {comiteCompleto.Nome}",
+                        emailBody,
+                        isHtml: true,
+                        cancellationToken);
+                }
+                catch
+                {
+                    // Erro no envio de email não deve quebrar o fluxo principal
+                }
+            }
+        }
+        
         return comiteCompleto!;
     }
 
@@ -152,6 +186,45 @@ public class ComiteCientificoService
     {
         await _comiteCientificoRepository.AddAvaliadorAsync(comiteId, avaliadorId, cancellationToken);
         var comite = await _comiteCientificoRepository.FindByIdWithRelacionamentosAsync(comiteId, cancellationToken);
+        
+        // Enviar email ao avaliador adicionado
+        if (comite != null && comite.Coordenadores.Any())
+        {
+            var avaliador = await _avaliadorRepository.FindByIdAsync(avaliadorId, cancellationToken);
+            if (avaliador != null)
+            {
+                // Buscar o evento para obter o nome
+                var evento = await _eventoRepository.FindByIdWithOrganizadoresAsync(comite.EventoId, cancellationToken);
+                if (evento != null)
+                {
+                    // Usar o primeiro coordenador como organizador que adicionou
+                    var organizadorQueAdicionou = comite.Coordenadores.First();
+                    
+                    try
+                    {
+                        var emailBody = EmailTemplateService.AdicionadoAoComiteCientificoTemplate(
+                            avaliador.Nome,
+                            organizadorQueAdicionou.Nome,
+                            comite.Nome,
+                            evento.Nome,
+                            comite.Tipo,
+                            comite.Descricao);
+                        
+                        await _emailService.SendEmailAsync(
+                            avaliador.Email,
+                            $"Você foi adicionado ao Comitê Científico: {comite.Nome}",
+                            emailBody,
+                            isHtml: true,
+                            cancellationToken);
+                    }
+                    catch
+                    {
+                        // Erro no envio de email não deve quebrar o fluxo principal
+                    }
+                }
+            }
+        }
+        
         return comite!;
     }
 

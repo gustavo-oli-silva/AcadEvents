@@ -2,6 +2,7 @@ using AcadEvents.Dtos;
 using AcadEvents.Models;
 using AcadEvents.Repositories;
 using AcadEvents.Services;
+using AcadEvents.Services.EmailTemplates;
 namespace AcadEvents.Services;
 
 public class AutorService
@@ -9,15 +10,18 @@ public class AutorService
     private readonly AutorRepository _autorRepository;
     private readonly PerfilORCIDRepository _perfilORCIDRepository;
     private readonly HashService _hashService;
+    private readonly IEmailService _emailService;
 
     public AutorService(
         AutorRepository autorRepository,
         PerfilORCIDRepository perfilORCIDRepository,
-        HashService hashService)
+        HashService hashService,
+        IEmailService emailService)
     {
         _autorRepository = autorRepository;
         _perfilORCIDRepository = perfilORCIDRepository;
         _hashService = hashService;
+        _emailService = emailService;
     }
 
     public async Task<List<Autor>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -55,7 +59,25 @@ public class AutorService
             PerfilORCIDId = request.PerfilORCIDId
         };
 
-        return await _autorRepository.CreateAsync(autor, cancellationToken);
+        var autorCriado = await _autorRepository.CreateAsync(autor, cancellationToken);
+
+        // Enviar email de boas-vindas
+        try
+        {
+            var emailBody = EmailTemplateService.RegistroUsuarioTemplate(autorCriado.Nome, "Autor");
+            await _emailService.SendEmailAsync(
+                autorCriado.Email,
+                "Bem-vindo ao AcadEvents!",
+                emailBody,
+                isHtml: true,
+                cancellationToken);
+        }
+        catch
+        {
+            // Erro no envio de email não deve quebrar o fluxo principal
+        }
+
+        return autorCriado;
     }
 
     public async Task<Autor?> UpdateAsync(long id, AutorRequestDTO request, CancellationToken cancellationToken = default)

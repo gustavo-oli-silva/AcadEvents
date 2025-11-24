@@ -1,6 +1,7 @@
 using AcadEvents.Dtos;
 using AcadEvents.Models;
 using AcadEvents.Repositories;
+using AcadEvents.Services.EmailTemplates;
 
 namespace AcadEvents.Services;
 
@@ -9,15 +10,21 @@ public class EventoService
     private readonly EventoRepository _eventoRepository;
     private readonly OrganizadorRepository _organizadorRepository;
     private readonly ConfiguracaoEventoRepository _configuracaoEventoRepository;
+    private readonly AutorRepository _autorRepository;
+    private readonly IEmailService _emailService;
 
     public EventoService(
         EventoRepository eventoRepository,
         OrganizadorRepository organizadorRepository,
-        ConfiguracaoEventoRepository configuracaoEventoRepository)
+        ConfiguracaoEventoRepository configuracaoEventoRepository,
+        AutorRepository autorRepository,
+        IEmailService emailService)
     {
         _eventoRepository = eventoRepository;
         _organizadorRepository = organizadorRepository;
         _configuracaoEventoRepository = configuracaoEventoRepository;
+        _autorRepository = autorRepository;
+        _emailService = emailService;
     }
 
     public async Task<List<Evento>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -75,6 +82,84 @@ public class EventoService
         var eventoCriado = await _eventoRepository.CreateAsync(evento, cancellationToken);
         // Recarregar com organizadores para garantir que estão incluídos
         var eventoCompleto = await _eventoRepository.FindByIdWithOrganizadoresAsync(eventoCriado.Id, cancellationToken);
+        
+        // Enviar email para todos os organizadores do evento
+        if (eventoCompleto != null && eventoCompleto.Configuracao != null && eventoCompleto.Organizadores.Any())
+        {
+            foreach (var organizadorEvento in eventoCompleto.Organizadores)
+            {
+                try
+                {
+                    var emailBody = EmailTemplateService.EventoCriadoTemplate(
+                        organizadorEvento.Nome,
+                        eventoCompleto.Nome,
+                        eventoCompleto.Descricao,
+                        eventoCompleto.DataInicio,
+                        eventoCompleto.DataFim,
+                        eventoCompleto.Local,
+                        eventoCompleto.Configuracao.PrazoSubmissao,
+                        eventoCompleto.Configuracao.PrazoAvaliacao,
+                        eventoCompleto.Configuracao.NumeroAvaliadoresPorSubmissao,
+                        eventoCompleto.Configuracao.AvaliacaoDuploCego,
+                        eventoCompleto.Configuracao.PermiteResubmissao);
+                    
+                    await _emailService.SendEmailAsync(
+                        organizadorEvento.Email,
+                        $"Novo Evento Criado: {eventoCompleto.Nome}",
+                        emailBody,
+                        isHtml: true,
+                        cancellationToken);
+                }
+                catch
+                {
+                    // Erro no envio de email não deve quebrar o fluxo principal
+                }
+            }
+        }
+
+        // Enviar email para todos os autores da plataforma
+        if (eventoCompleto != null && eventoCompleto.Configuracao != null)
+        {
+            try
+            {
+                var todosAutores = await _autorRepository.FindAllAsync(cancellationToken);
+                
+                foreach (var autor in todosAutores)
+                {
+                    try
+                    {
+                        var emailBody = EmailTemplateService.EventoCriadoTemplate(
+                            autor.Nome,
+                            eventoCompleto.Nome,
+                            eventoCompleto.Descricao,
+                            eventoCompleto.DataInicio,
+                            eventoCompleto.DataFim,
+                            eventoCompleto.Local,
+                            eventoCompleto.Configuracao.PrazoSubmissao,
+                            eventoCompleto.Configuracao.PrazoAvaliacao,
+                            eventoCompleto.Configuracao.NumeroAvaliadoresPorSubmissao,
+                            eventoCompleto.Configuracao.AvaliacaoDuploCego,
+                            eventoCompleto.Configuracao.PermiteResubmissao);
+                        
+                        await _emailService.SendEmailAsync(
+                            autor.Email,
+                            $"Novo Evento Disponível: {eventoCompleto.Nome}",
+                            emailBody,
+                            isHtml: true,
+                            cancellationToken);
+                    }
+                    catch
+                    {
+                        // Erro no envio de email para um autor específico não deve interromper o envio para os demais
+                    }
+                }
+            }
+            catch
+            {
+                // Erro ao buscar autores não deve quebrar o fluxo principal
+            }
+        }
+        
         return eventoCompleto!;
     }
 

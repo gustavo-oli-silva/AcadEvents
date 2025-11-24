@@ -2,6 +2,7 @@ using AcadEvents.Dtos;
 using AcadEvents.Models;
 using AcadEvents.Repositories;
 using AcadEvents.Services;
+using AcadEvents.Services.EmailTemplates;
 namespace AcadEvents.Services;
 
 public class AvaliadorService
@@ -9,15 +10,18 @@ public class AvaliadorService
     private readonly AvaliadorRepository _avaliadorRepository;
     private readonly PerfilORCIDRepository _perfilORCIDRepository;
     private readonly HashService _hashService;
+    private readonly IEmailService _emailService;
     
     public AvaliadorService(
         AvaliadorRepository avaliadorRepository,
         PerfilORCIDRepository perfilORCIDRepository,
-        HashService hashService)
+        HashService hashService,
+        IEmailService emailService)
     {
         _avaliadorRepository = avaliadorRepository;
         _perfilORCIDRepository = perfilORCIDRepository;
         _hashService = hashService;
+        _emailService = emailService;
     }
 
     public async Task<List<Avaliador>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -60,7 +64,25 @@ public class AvaliadorService
             PerfilORCIDId = request.PerfilORCIDId
         };
 
-        return await _avaliadorRepository.CreateAsync(avaliador, cancellationToken);
+        var avaliadorCriado = await _avaliadorRepository.CreateAsync(avaliador, cancellationToken);
+
+        // Enviar email de boas-vindas
+        try
+        {
+            var emailBody = EmailTemplateService.RegistroUsuarioTemplate(avaliadorCriado.Nome, "Avaliador");
+            await _emailService.SendEmailAsync(
+                avaliadorCriado.Email,
+                "Bem-vindo ao AcadEvents!",
+                emailBody,
+                isHtml: true,
+                cancellationToken);
+        }
+        catch
+        {
+            // Erro no envio de email não deve quebrar o fluxo principal
+        }
+
+        return avaliadorCriado;
     }
 
     public async Task<Avaliador?> UpdateAsync(long id, AvaliadorRequestDTO request, CancellationToken cancellationToken = default)
