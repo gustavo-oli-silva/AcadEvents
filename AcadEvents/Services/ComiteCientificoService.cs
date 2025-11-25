@@ -182,46 +182,59 @@ public class ComiteCientificoService
         return await _comiteCientificoRepository.DeleteAsync(id, cancellationToken);
     }
 
-    public async Task<ComiteCientifico> AddAvaliadorAsync(long comiteId, long avaliadorId, CancellationToken cancellationToken = default)
+    public async Task<ComiteCientifico> AddAvaliadorAsync(long comiteId, string emailAvaliador, CancellationToken cancellationToken = default)
     {
-        await _comiteCientificoRepository.AddAvaliadorAsync(comiteId, avaliadorId, cancellationToken);
+        // Buscar avaliador por email
+        var avaliador = await _avaliadorRepository.FindByEmailAsync(emailAvaliador, cancellationToken);
+        if (avaliador == null)
+            throw new ArgumentException($"Avaliador com email {emailAvaliador} não encontrado.");
+
+        // Buscar comitê para validar se já está adicionado
         var comite = await _comiteCientificoRepository.FindByIdWithRelacionamentosAsync(comiteId, cancellationToken);
+        if (comite == null)
+            throw new ArgumentException($"Comitê Científico com Id {comiteId} não encontrado.");
+
+        // Validar se o avaliador já está no comitê
+        if (comite.MembrosAvaliadores.Any(a => a.Id == avaliador.Id))
+        {
+            throw new ArgumentException($"O avaliador com email {emailAvaliador} já está adicionado ao comitê.");
+        }
+
+        // Adicionar avaliador
+        await _comiteCientificoRepository.AddAvaliadorAsync(comiteId, avaliador.Id, cancellationToken);
+        
+        // Recarregar comitê com relacionamentos
+        comite = await _comiteCientificoRepository.FindByIdWithRelacionamentosAsync(comiteId, cancellationToken);
+        
+        // Buscar evento para enviar email
+        var evento = await _eventoRepository.FindByIdWithOrganizadoresAsync(comite.EventoId, cancellationToken);
         
         // Enviar email ao avaliador adicionado
-        if (comite != null && comite.Coordenadores.Any())
+        if (comite != null && comite.Coordenadores.Any() && evento != null)
         {
-            var avaliador = await _avaliadorRepository.FindByIdAsync(avaliadorId, cancellationToken);
-            if (avaliador != null)
+            // Usar o primeiro coordenador como organizador que adicionou
+            var organizadorQueAdicionou = comite.Coordenadores.First();
+            
+            try
             {
-                // Buscar o evento para obter o nome
-                var evento = await _eventoRepository.FindByIdWithOrganizadoresAsync(comite.EventoId, cancellationToken);
-                if (evento != null)
-                {
-                    // Usar o primeiro coordenador como organizador que adicionou
-                    var organizadorQueAdicionou = comite.Coordenadores.First();
-                    
-                    try
-                    {
-                        var emailBody = EmailTemplateService.AdicionadoAoComiteCientificoTemplate(
-                            avaliador.Nome,
-                            organizadorQueAdicionou.Nome,
-                            comite.Nome,
-                            evento.Nome,
-                            comite.Tipo,
-                            comite.Descricao);
-                        
-                        await _emailService.SendEmailAsync(
-                            avaliador.Email,
-                            $"Você foi adicionado ao Comitê Científico: {comite.Nome}",
-                            emailBody,
-                            isHtml: true,
-                            cancellationToken);
-                    }
-                    catch
-                    {
-                        // Erro no envio de email não deve quebrar o fluxo principal
-                    }
-                }
+                var emailBody = EmailTemplateService.AdicionadoAoComiteCientificoTemplate(
+                    avaliador.Nome,
+                    organizadorQueAdicionou.Nome,
+                    comite.Nome,
+                    evento.Nome,
+                    comite.Tipo,
+                    comite.Descricao);
+                
+                await _emailService.SendEmailAsync(
+                    avaliador.Email,
+                    $"Você foi adicionado ao Comitê Científico: {comite.Nome}",
+                    emailBody,
+                    isHtml: true,
+                    cancellationToken);
+            }
+            catch
+            {
+                // Erro no envio de email não deve quebrar o fluxo principal
             }
         }
         
@@ -235,10 +248,29 @@ public class ComiteCientificoService
         return comite!;
     }
 
-    public async Task<ComiteCientifico> AddCoordenadorAsync(long comiteId, long organizadorId, CancellationToken cancellationToken = default)
+    public async Task<ComiteCientifico> AddCoordenadorAsync(long comiteId, string emailOrganizador, CancellationToken cancellationToken = default)
     {
-        await _comiteCientificoRepository.AddCoordenadorAsync(comiteId, organizadorId, cancellationToken);
+        // Buscar organizador por email
+        var organizador = await _organizadorRepository.FindByEmailAsync(emailOrganizador, cancellationToken);
+        if (organizador == null)
+            throw new ArgumentException($"Organizador com email {emailOrganizador} não encontrado.");
+
+        // Buscar comitê para validar se já está adicionado
         var comite = await _comiteCientificoRepository.FindByIdWithRelacionamentosAsync(comiteId, cancellationToken);
+        if (comite == null)
+            throw new ArgumentException($"Comitê Científico com Id {comiteId} não encontrado.");
+
+        // Validar se o organizador já está no comitê
+        if (comite.Coordenadores.Any(o => o.Id == organizador.Id))
+        {
+            throw new ArgumentException($"O organizador com email {emailOrganizador} já está adicionado ao comitê.");
+        }
+
+        // Adicionar coordenador
+        await _comiteCientificoRepository.AddCoordenadorAsync(comiteId, organizador.Id, cancellationToken);
+        
+        // Recarregar comitê com relacionamentos
+        comite = await _comiteCientificoRepository.FindByIdWithRelacionamentosAsync(comiteId, cancellationToken);
         return comite!;
     }
 

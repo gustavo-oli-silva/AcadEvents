@@ -204,10 +204,29 @@ public class EventoService
         return await _eventoRepository.DeleteAsync(id, cancellationToken);
     }
 
-    public async Task<Evento> AddOrganizadorAsync(long eventoId, long organizadorId, CancellationToken cancellationToken = default)
+    public async Task<Evento> AddOrganizadorAsync(long eventoId, string emailOrganizador, CancellationToken cancellationToken = default)
     {
-        await _eventoRepository.AddOrganizadorAsync(eventoId, organizadorId, cancellationToken);
+        // Buscar organizador por email
+        var organizador = await _organizadorRepository.FindByEmailAsync(emailOrganizador, cancellationToken);
+        if (organizador == null)
+            throw new ArgumentException($"Organizador com email {emailOrganizador} não encontrado.");
+
+        // Buscar evento para validar se já está adicionado
         var evento = await _eventoRepository.FindByIdWithOrganizadoresAsync(eventoId, cancellationToken);
+        if (evento == null)
+            throw new ArgumentException($"Evento com Id {eventoId} não encontrado.");
+
+        // Validar se o organizador já está no evento
+        if (evento.Organizadores.Any(o => o.Id == organizador.Id))
+        {
+            throw new ArgumentException($"O organizador com email {emailOrganizador} já está adicionado ao evento.");
+        }
+
+        // Adicionar organizador
+        await _eventoRepository.AddOrganizadorAsync(eventoId, organizador.Id, cancellationToken);
+        
+        // Recarregar evento com relacionamentos
+        evento = await _eventoRepository.FindByIdWithOrganizadoresAsync(eventoId, cancellationToken);
         return evento!;
     }
 

@@ -131,11 +131,11 @@ public class EventoController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("{eventoId}/organizadores/{organizadorId}")]
+    [HttpPost("{eventoId}/organizadores/{emailOrganizador}")]
     [Authorize(Roles = "Organizador")]
     public async Task<ActionResult<EventoResponseDTO>> AddOrganizador(
         long eventoId,
-        long organizadorId,
+        string emailOrganizador,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Organizador tentando adicionar outro organizador ao evento {EventoId}", eventoId);
@@ -153,12 +153,12 @@ public class EventoController : ControllerBase
 
         try
         {
-            var evento = await _eventoService.AddOrganizadorAsync(eventoId, organizadorId, cancellationToken);
+            var evento = await _eventoService.AddOrganizadorAsync(eventoId, emailOrganizador, cancellationToken);
             return Ok(EventoResponseDTO.ValueOf(evento));
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Erro ao adicionar organizador {OrganizadorId} ao evento {EventoId}", organizadorId, eventoId);
+            _logger.LogWarning(ex, "Erro ao adicionar organizador {EmailOrganizador} ao evento {EventoId}", emailOrganizador, eventoId);
             return BadRequest(ex.Message);
         }
     }

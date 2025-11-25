@@ -102,15 +102,16 @@ namespace AcadEvents.Controllers
             return NoContent();
         }
 
-        [HttpPost("{comiteId}/avaliadores/{avaliadorId}")]
+        [HttpPost("{comiteId}/avaliadores/{emailAvaliador}")]
+        [Authorize(Roles = "Organizador")]
         public async Task<ActionResult<ComiteCientificoResponseDTO>> AddAvaliador(
             long comiteId,
-            long avaliadorId,
+            string emailAvaliador,
             CancellationToken cancellationToken = default)
         {
             try
             {
-                var comite = await _comiteCientificoService.AddAvaliadorAsync(comiteId, avaliadorId, cancellationToken);
+                var comite = await _comiteCientificoService.AddAvaliadorAsync(comiteId, emailAvaliador, cancellationToken);
                 return Ok(ComiteCientificoResponseDTO.ValueOf(comite));
             }
             catch (ArgumentException ex)
@@ -136,14 +137,14 @@ namespace AcadEvents.Controllers
             }
         }
 
-        [HttpPost("{comiteId}/coordenadores/{organizadorId}")]
+        [HttpPost("{comiteId}/coordenadores/{emailOrganizador}")]
         [Authorize(Roles = "Organizador")]
         public async Task<ActionResult<ComiteCientificoResponseDTO>> AddCoordenador(
             long comiteId,
-            long organizadorId,
+            string emailOrganizador,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Organizador tentando adicionar coordenador {OrganizadorId} ao comitê {ComiteId}", organizadorId, comiteId);
+            _logger.LogInformation("Organizador tentando adicionar coordenador {EmailOrganizador} ao comitê {ComiteId}", emailOrganizador, comiteId);
 
             // Extrai o ID do usuário do token para validar permissões
             var userIdString = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
@@ -158,12 +159,12 @@ namespace AcadEvents.Controllers
 
             try
             {
-                var comite = await _comiteCientificoService.AddCoordenadorAsync(comiteId, organizadorId, cancellationToken);
+                var comite = await _comiteCientificoService.AddCoordenadorAsync(comiteId, emailOrganizador, cancellationToken);
                 return Ok(ComiteCientificoResponseDTO.ValueOf(comite));
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(ex, "Erro ao adicionar coordenador {OrganizadorId} ao comitê {ComiteId}", organizadorId, comiteId);
+                _logger.LogWarning(ex, "Erro ao adicionar coordenador {EmailOrganizador} ao comitê {ComiteId}", emailOrganizador, comiteId);
                 return BadRequest(ex.Message);
             }
         }
