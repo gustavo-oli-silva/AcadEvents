@@ -29,7 +29,7 @@ services:
     depends_on:
       - sqlserver
     volumes:
-      - ./storage/artigos:/app/storage/artigos
+      - ../storage/artigos:/app/storage/artigos
     networks:
       - acadevents-network
     # O backend tentará conectar automaticamente quando o SQL Server estiver pronto

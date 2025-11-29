@@ -5,10 +5,10 @@ EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY ["AcadEvents/AcadEvents.csproj", "AcadEvents/"]
-RUN dotnet restore "AcadEvents/AcadEvents.csproj"
+COPY ["AcadEvents.csproj", "./"]
+RUN dotnet restore "AcadEvents.csproj"
 COPY . .
-WORKDIR "/src/AcadEvents"
+WORKDIR "/src"
 RUN dotnet build "AcadEvents.csproj" -c Release -o /app/build
 
 FROM build AS publish
